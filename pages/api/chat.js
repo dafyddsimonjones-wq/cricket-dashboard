@@ -19,7 +19,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 400,
+        max_tokens: 600,
         system: system || "",
         messages,
       }),
@@ -36,7 +36,23 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "No text in response" });
     }
 
-    return res.status(200).json({ text: block.text.trim() });
+    const raw = block.text.trim();
+
+    // Extract %%XI_UPDATE%%{...}%%END%% block if present
+    let text = raw;
+    let xiUpdate = null;
+
+    const xiMatch = raw.match(/%%XI_UPDATE%%([\s\S]*?)%%END%%/);
+    if (xiMatch) {
+      try {
+        xiUpdate = JSON.parse(xiMatch[1].trim());
+      } catch (e) {
+        // parsing failed, ignore
+      }
+      text = raw.replace(/%%XI_UPDATE%%[\s\S]*?%%END%%/, "").trim();
+    }
+
+    return res.status(200).json({ text, xiUpdate });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
